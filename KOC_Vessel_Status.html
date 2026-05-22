@@ -542,10 +542,11 @@ function setSyncState(s){
 }
 
 /* ============ PERSISTENCE ============ */
-function normalizeRow(s, r){
+const LOCATIONS = ['MAA','North','KIPIC'];
+function normalizeRow(s, r, l){
   if(STATUS_RENAME[s]) s = STATUS_RENAME[s];
   if(!STATUSES[s]) s = 'In Commission';
-  return { s, r: r || '' };
+  return { s, r: r || '', l: LOCATIONS.includes(l) ? l : null };
 }
 
 async function loadStatus(){
