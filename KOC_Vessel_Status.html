@@ -652,7 +652,10 @@ function importStatus(){
 }
 
 /* ============ REAL-TIME ============ */
-function applyRemoteUpdate(vesselName, status, reason){
+function applyRemoteUpdate(vesselName, status, reason, location){
+  // If location changed, a full re-render is needed (vessel moves section)
+  const curLoc = getLocation(vesselName);
+  if(location && location !== curLoc){ render(); return; }
   const safe = vesselName.replace(/\\/g,'\\\\').replace(/"/g,'\\"');
   const row = document.querySelector(`.row[data-name="${safe}"]`);
   if(row){
