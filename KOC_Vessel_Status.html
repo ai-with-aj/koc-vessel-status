@@ -886,18 +886,6 @@ function renderTally(shownCount){
   const cb = $("#clearBtn");
   if(cb) cb.onclick = clearFilters;
   $("#exportBtn").onclick = exportStatus;
-  $("#importBtn").onclick = importStatus;
-  $("#resetBtn").onclick = async ()=>{
-    if(confirm("Reset every vessel to In Commission and clear all off-commission reasons? This affects everyone with the link.")){
-      fleetState = {};
-      const rows = VESSELS.map(v=>({
-        vessel_name: v.n, status:'In Commission', reason:'',
-        updated_at: new Date().toISOString()
-      }));
-      await db.from('vessel_status').upsert(rows, { onConflict:'vessel_name' });
-      render();
-    }
-  };
   $("#printBtn").onclick = ()=> window.print();
   renderChart();
 }
