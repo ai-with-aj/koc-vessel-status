@@ -158,19 +158,19 @@
 
   /* ---------- live tally ---------- */
   .tally{
-    display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 4px;
-    padding:13px 16px;background:var(--panel);border:1px solid var(--line-soft);
+    display:flex;gap:6px 10px;flex-wrap:wrap;margin:12px 0 4px;
+    padding:10px 12px;background:var(--panel);border:1px solid var(--line-soft);
     border-radius:10px;align-items:center;
   }
   .tally .lbl{
-    font-family:'Oswald',sans-serif;font-size:.72rem;letter-spacing:.16em;
-    text-transform:uppercase;color:var(--faint);margin-right:4px;
+    font-family:'Oswald',sans-serif;font-size:.68rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--faint);width:100%;
   }
-  .tstat{display:flex;align-items:center;gap:7px;font-size:.78rem;}
+  .tstat{display:flex;align-items:center;gap:7px;font-size:.76rem;}
   .tstat .sw{width:9px;height:9px;border-radius:2px;}
   .tstat b{font-family:'IBM Plex Mono',monospace;font-weight:600;}
-  .tally .spacer{flex:1;}
-  .shown{font-family:'IBM Plex Mono',monospace;font-size:.75rem;color:var(--muted);}
+  .tally .spacer{display:none;}
+  .shown{font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:var(--muted);order:9;margin-left:auto;}
   .shown.filtered{color:var(--brand);font-weight:600;}
   .btn-min.clearf{
     border-color:var(--brand);color:#cdd9ff;
