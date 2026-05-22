@@ -565,10 +565,11 @@ async function loadStatus(){
 
 async function saveVessel(name){
   setSyncState('saving');
-  const e = fleetState[name] || { s:'In Commission', r:'' };
+  const e = fleetState[name] || { s:'In Commission', r:'', l:null };
+  const defaultLoc = VESSELS.find(v=>v.n===name)?.loc || 'MAA';
   try{
     const { error } = await db.from('vessel_status').upsert(
-      { vessel_name:name, status:e.s, reason:e.r, updated_at:new Date().toISOString() },
+      { vessel_name:name, status:e.s, reason:e.r, location:e.l||defaultLoc, updated_at:new Date().toISOString() },
       { onConflict:'vessel_name' }
     );
     if(error) throw error;
