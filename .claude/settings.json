@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "statusMessage": "Committing and pushing…",
+            "command": "INPUT=$(cat); f=$(printf '%s' \"$INPUT\" | jq -r '.tool_input.file_path // \"\"'); [ -n \"$f\" ] && git -C \"/Users/a.gharaballi/Desktop/vessel status\" add \"$f\" 2>/dev/null && { git -C \"/Users/a.gharaballi/Desktop/vessel status\" diff --staged --quiet || { git -C \"/Users/a.gharaballi/Desktop/vessel status\" commit -m \"Update ${f##*/}\" 2>/dev/null && git -C \"/Users/a.gharaballi/Desktop/vessel status\" push origin HEAD 2>/dev/null; VERCEL_TELEMETRY_DISABLED=1 PATH=\"$HOME/.node/bin:$PATH\" npx vercel --prod --yes --cwd \"/Users/a.gharaballi/Desktop/vessel status\" 2>/dev/null; }; } || true"
+          }
+        ]
+      }
+    ]
+  }
+}
