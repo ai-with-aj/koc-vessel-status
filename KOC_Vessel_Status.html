@@ -142,10 +142,12 @@
   .search input:focus{outline:none;border-color:var(--brand);}
   .search input::placeholder{color:var(--faint);}
 
-  .filters{display:flex;gap:7px;flex-wrap:wrap;padding:12px 0 4px;}
+  .filters{display:flex;gap:7px;overflow-x:auto;flex-wrap:nowrap;padding:8px 0 2px;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .filters::-webkit-scrollbar{display:none;}
   .chip{
     background:var(--panel);border:1px solid var(--line);color:var(--muted);
-    border-radius:20px;padding:5px 13px;cursor:pointer;font-size:.72rem;
+    border-radius:20px;padding:4px 11px;cursor:pointer;font-size:.68rem;
     letter-spacing:.04em;transition:.15s;white-space:nowrap;
     display:flex;align-items:center;gap:6px;
   }
