@@ -606,9 +606,10 @@ function saveDebounced(name){
 
 function getStatus(name){ return (fleetState[name] && fleetState[name].s) || "In Commission"; }
 function getReason(name){ return (fleetState[name] && fleetState[name].r) || ""; }
-function setVessel(name, s, r){
-  const cur = fleetState[name] || {s:"In Commission", r:""};
-  fleetState[name] = { s: s!==undefined?s:cur.s, r: r!==undefined?r:cur.r };
+function getLocation(name){ return (fleetState[name]?.l) || VESSELS.find(v=>v.n===name)?.loc || 'MAA'; }
+function setVessel(name, s, r, l){
+  const cur = fleetState[name] || {s:"In Commission", r:"", l:null};
+  fleetState[name] = { s:s!==undefined?s:cur.s, r:r!==undefined?r:cur.r, l:l!==undefined?l:cur.l };
 }
 
 function exportStatus(){
