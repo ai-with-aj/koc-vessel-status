@@ -763,7 +763,9 @@ function vesselRow(v){
       <div class="vcell-name">
         <div class="vname-row">
           <span class="vname">${v.n}</span>
-          <span class="loc-badge ${v.loc.toLowerCase()}">${v.loc}</span>
+          <select class="loc-sel ${getLocation(v.n).toLowerCase()}" data-vessel="${esc(v.n)}">
+            ${LOCATIONS.map(l=>`<option value="${l}" ${getLocation(v.n)===l?'selected':''}>${l}</option>`).join('')}
+          </select>
         </div>
         <div class="vclass">${v.cls}</div>
       </div>
