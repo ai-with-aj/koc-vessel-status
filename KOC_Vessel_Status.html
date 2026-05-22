@@ -384,6 +384,9 @@
 </div>
 
 <script>
+/* ============ AUTH GATE ============ */
+if (!sessionStorage.getItem('koc-auth')) { window.location.replace('index.html'); }
+
 /* ============ SUPABASE ============ */
 const SUPABASE_URL = 'https://kpvelteqsdbmxadxjazy.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtwdmVsdGVxc2RibXhhZHhqYXp5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NjEyODksImV4cCI6MjA5NTAzNzI4OX0.DbGdQKJfh9iTzDVJ6-PbAwvs6EoQSM4UwYsF271cDw4';
