@@ -583,7 +583,9 @@ async function saveVessel(name){
 async function saveStatus(){
   setSyncState('saving');
   const rows = Object.entries(fleetState).map(([vessel_name, e])=>({
-    vessel_name, status:e.s, reason:e.r, updated_at:new Date().toISOString()
+    vessel_name, status:e.s, reason:e.r,
+    location: e.l || (VESSELS.find(v=>v.n===vessel_name)?.loc || 'MAA'),
+    updated_at:new Date().toISOString()
   }));
   if(!rows.length){ setSyncState('live'); return; }
   try{
