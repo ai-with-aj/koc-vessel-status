@@ -240,14 +240,20 @@
     letter-spacing:.03em;line-height:1.15;
   }
   .vname-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-  .loc-badge{
+  .loc-sel{
     font-family:'Oswald',sans-serif;font-weight:700;font-size:.58rem;
-    letter-spacing:.14em;padding:2px 7px;border-radius:4px;white-space:nowrap;
-    flex:none;
+    letter-spacing:.14em;padding:2px 18px 2px 7px;border-radius:4px;
+    white-space:nowrap;flex:none;cursor:pointer;
+    -webkit-appearance:none;appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath fill='currentColor' d='M0 0l4 5 4-5z'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 5px center;background-size:6px 4px;
+    transition:box-shadow .15s;
   }
-  .loc-badge.maa{background:rgba(45,91,184,.14);color:var(--brand);border:1px solid var(--brand-dim);}
-  .loc-badge.north{background:rgba(45,212,191,.13);color:#2dd4bf;border:1px solid #1c7d70;}
-  .loc-badge.kipic{background:rgba(255,158,84,.13);color:#ff9e54;border:1px solid #b3672a;}
+  .loc-sel:focus{outline:none;box-shadow:0 0 0 2px rgba(255,255,255,.15);}
+  .loc-sel.maa{background-color:rgba(45,91,184,.14);color:var(--brand);border:1px solid var(--brand-dim);}
+  .loc-sel.north{background-color:rgba(45,212,191,.13);color:#2dd4bf;border:1px solid #1c7d70;}
+  .loc-sel.kipic{background-color:rgba(255,158,84,.13);color:#ff9e54;border:1px solid #b3672a;}
+  .loc-sel option{background:var(--panel-2);color:var(--text);font-size:.85rem;}
 
   /* ---------- off-commission reason bar ---------- */
   .reason-bar{
