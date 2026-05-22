@@ -551,11 +551,11 @@ function normalizeRow(s, r, l){
 
 async function loadStatus(){
   try{
-    const { data, error } = await db.from('vessel_status').select('vessel_name,status,reason');
+    const { data, error } = await db.from('vessel_status').select('vessel_name,status,reason,location');
     if(error) throw error;
     fleetState = {};
     (data || []).forEach(row=>{
-      fleetState[row.vessel_name] = normalizeRow(row.status, row.reason);
+      fleetState[row.vessel_name] = normalizeRow(row.status, row.reason, row.location);
     });
   } catch(e){
     setSyncState('error');
