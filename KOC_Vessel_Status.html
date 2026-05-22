@@ -747,7 +747,10 @@ function vesselRow(v){
         </div>
       </div>
       <div class="vcell-name">
-        <div class="vname">${v.n}</div>
+        <div class="vname-row">
+          <span class="vname">${v.n}</span>
+          <span class="loc-badge ${v.loc.toLowerCase()}">${v.loc}</span>
+        </div>
         <div class="vclass">${v.cls}</div>
       </div>
       ${cell("KT No.", v.kt, "mono dim"+(v.kt?"":" na"))}
