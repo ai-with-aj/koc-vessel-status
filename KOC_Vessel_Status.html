@@ -698,7 +698,7 @@ const $ = s => document.querySelector(s);
 const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g,"-");
 
 function matches(v){
-  if(state.loc !== "ALL" && v.loc !== state.loc) return false;
+  if(state.loc !== "ALL" && getLocation(v.n) !== state.loc) return false;
   if(state.cat !== "ALL" && v.cat !== state.cat) return false;
   if(state.status !== "ALL" && getStatus(v.n) !== state.status) return false;
   const q = state.search.trim().toLowerCase();
