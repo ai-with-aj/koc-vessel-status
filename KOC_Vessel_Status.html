@@ -845,6 +845,15 @@ function render(){
     };
     inp.onchange = ()=> saveVessel(inp.dataset.vessel);
   });
+  fleet.querySelectorAll(".loc-sel").forEach(sel=>{
+    sel.onchange = ()=>{
+      const name = sel.dataset.vessel;
+      const newLoc = sel.value;
+      setVessel(name, undefined, undefined, newLoc);
+      saveVessel(name);
+      render(); // vessel moves to its new location section
+    };
+  });
   renderTally(list.length);
 }
 
