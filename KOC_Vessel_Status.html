@@ -792,7 +792,7 @@ function render(){
   };
 
   locs.forEach(loc=>{
-    const lv = list.filter(v=>v.loc===loc);
+    const lv = list.filter(v=>getLocation(v.n)===loc);
     if(!lv.length) return;
     const fullName = LOC_NAME[loc] || loc;
     html += `<section class="loc">
