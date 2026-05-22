@@ -1,0 +1,5 @@
+{
+  "routes": [
+    { "src": "/", "dest": "/KOC_Vessel_Status.html" }
+  ]
+}

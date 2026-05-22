@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vessel Status Overview — KOC Marine Fleet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#0a0e14;
+    --panel:#121925;
+    --panel-2:#172132;
+    --line:#243149;
+    --line-soft:#1c2738;
+    --text:#e6edf3;
+    --muted:#8b97a8;
+    --faint:#5d6b7e;
+    --brand:#2d5bb8;
+    --brand-dim:#1e3f80;
+    --op:#3fb950;
+    --dd:#eab308;
+    --sb:#58a6ff;
+    --oos:#f85149;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:var(--ink);}
+  body{
+    font-family:'IBM Plex Sans',sans-serif;
+    color:var(--text);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(900px 500px at 88% -10%, rgba(45,91,184,.10), transparent 60%),
+      radial-gradient(700px 600px at -10% 110%, rgba(88,166,255,.07), transparent 55%),
+      var(--ink);
+    background-attachment:fixed;
+    padding:0 0 60px;
+  }
+  .wrap{max-width:1220px;margin:0 auto;padding:0 22px;}
+
+  /* ---------- header ---------- */
+  header{
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(18,25,37,.92), rgba(10,14,20,.55));
+    backdrop-filter:blur(6px);
+    position:sticky;top:0;z-index:50;
+  }
+  .head-inner{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:24px 32px;padding:18px 0 16px;flex-wrap:wrap;
+  }
+  .brandblock{display:flex;align-items:center;gap:16px;}
+  .anchor{
+    width:46px;height:46px;flex:none;border:1.5px solid var(--brand);
+    border-radius:8px;display:grid;place-items:center;
+    background:rgba(45,91,184,.08);
+  }
+  .anchor svg{width:24px;height:24px;}
+  h1{
+    font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:.06em;
+    font-size:1.62rem;text-transform:uppercase;line-height:1.05;
+  }
+  h1 span{color:var(--brand);}
+  .sub{
+    font-size:.74rem;letter-spacing:.20em;text-transform:uppercase;
+    color:var(--muted);margin-top:3px;display:flex;align-items:center;gap:9px;
+  }
+  .live-dot{
+    width:7px;height:7px;border-radius:50%;background:var(--op);
+    box-shadow:0 0 0 0 rgba(63,185,80,.6);animation:pulse 2.4s infinite;
+    transition:background .3s;
+  }
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(63,185,80,.55);}
+    70%{box-shadow:0 0 0 9px rgba(63,185,80,0);}
+    100%{box-shadow:0 0 0 0 rgba(63,185,80,0);}
+  }
+  /* ---------- fleet readiness donut ---------- */
+  .head-right{display:flex;flex-direction:column;align-items:stretch;gap:12px;}
+  .fleet-chart{display:flex;align-items:center;gap:16px;}
+  .donut{width:88px;height:88px;flex:none;}
+  .donut circle.seg{transition:stroke-dasharray .5s ease;}
+  .donut-num{font-family:'Oswald',sans-serif;font-weight:600;font-size:21px;
+    fill:var(--text);text-anchor:middle;dominant-baseline:central;}
+  .donut-lbl{font-family:'IBM Plex Sans',sans-serif;font-size:6.5px;
+    letter-spacing:.18em;fill:var(--faint);text-anchor:middle;dominant-baseline:central;}
+  .chart-legend{min-width:160px;}
+  .cl-title{
+    font-family:'Oswald',sans-serif;font-size:.66rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--faint);margin-bottom:6px;
+  }
+  .lg-row{display:flex;align-items:center;gap:8px;padding:2px 0;font-size:.76rem;}
+  .lg-dot{width:9px;height:9px;border-radius:2px;flex:none;}
+  .lg-name{color:var(--muted);flex:1;white-space:nowrap;}
+  .lg-val{font-family:'IBM Plex Mono',monospace;color:var(--text);font-weight:500;}
+
+  /* ---------- location count cards ---------- */
+  .counts{display:flex;gap:8px;}
+  .count{
+    flex:1;min-width:0;border:1px solid var(--line);border-radius:8px;
+    padding:6px 8px 7px;background:var(--panel);text-align:center;
+    --ac:#2d5bb8;cursor:pointer;user-select:none;
+    transition:border-color .14s,background .14s,box-shadow .14s;
+  }
+  .count.north{--ac:#2dd4bf;}
+  .count.kipic{--ac:#ff9e54;}
+  .count:hover:not(.on){border-color:var(--faint);}
+  .count.on{
+    border-color:var(--ac);background:var(--panel-2);
+    box-shadow:inset 0 0 0 1px var(--ac);
+  }
+  .count:focus-visible{outline:2px solid var(--ac);outline-offset:2px;}
+  .count b{
+    font-family:'Oswald',sans-serif;font-size:1.3rem;font-weight:600;
+    display:block;line-height:1;
+  }
+  .count small{
+    font-size:.55rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);
+  }
+  .count.maa b{color:var(--brand);}
+  .count.north b{color:#2dd4bf;}
+  .count.kipic b{color:#ff9e54;}
+
+  /* ---------- toolbar ---------- */
+  .toolbar{
+    display:flex;gap:14px;flex-wrap:wrap;align-items:center;
+    padding:18px 0 6px;
+  }
+  .search{
+    flex:1;min-width:220px;position:relative;
+  }
+  .search svg{
+    position:absolute;left:12px;top:50%;transform:translateY(-50%);
+    width:15px;height:15px;color:var(--faint);
+  }
+  .search input{
+    width:100%;background:var(--panel);border:1px solid var(--line);
+    color:var(--text);border-radius:8px;padding:10px 12px 10px 34px;
+    font-family:'IBM Plex Mono',monospace;font-size:.82rem;
+  }
+  .search input:focus{outline:none;border-color:var(--brand);}
+  .search input::placeholder{color:var(--faint);}
+
+  .filters{display:flex;gap:7px;flex-wrap:wrap;padding:12px 0 4px;}
+  .chip{
+    background:var(--panel);border:1px solid var(--line);color:var(--muted);
+    border-radius:20px;padding:5px 13px;cursor:pointer;font-size:.72rem;
+    letter-spacing:.04em;transition:.15s;white-space:nowrap;
+    display:flex;align-items:center;gap:6px;
+  }
+  .chip:hover{border-color:var(--faint);color:var(--text);}
+  .chip.on{background:var(--brand);border-color:var(--brand);color:#ffffff;font-weight:600;}
+  .chip .n{font-family:'IBM Plex Mono',monospace;font-size:.66rem;opacity:.75;}
+  .chip.dot::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c);}
+
+  /* ---------- live tally ---------- */
+  .tally{
+    display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 4px;
+    padding:13px 16px;background:var(--panel);border:1px solid var(--line-soft);
+    border-radius:10px;align-items:center;
+  }
+  .tally .lbl{
+    font-family:'Oswald',sans-serif;font-size:.72rem;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--faint);margin-right:4px;
+  }
+  .tstat{display:flex;align-items:center;gap:7px;font-size:.78rem;}
+  .tstat .sw{width:9px;height:9px;border-radius:2px;}
+  .tstat b{font-family:'IBM Plex Mono',monospace;font-weight:600;}
+  .tally .spacer{flex:1;}
+  .shown{font-family:'IBM Plex Mono',monospace;font-size:.75rem;color:var(--muted);}
+  .shown.filtered{color:var(--brand);font-weight:600;}
+  .btn-min.clearf{
+    border-color:var(--brand);color:#cdd9ff;
+    background:rgba(45,91,184,.16);
+  }
+  .btn-min.clearf:hover{background:rgba(45,91,184,.28);color:#fff;}
+  .btn-min{
+    background:var(--panel-2);border:1px solid var(--line);color:var(--muted);
+    border-radius:6px;padding:6px 11px;font-size:.7rem;cursor:pointer;
+    letter-spacing:.08em;text-transform:uppercase;font-family:'Oswald',sans-serif;
+  }
+  .btn-min:hover{color:var(--text);border-color:var(--faint);}
+
+  /* ---------- location section ---------- */
+  .loc{margin-top:30px;animation:rise .5s ease both;}
+  .loc:nth-child(2){animation-delay:.05s;}
+  @keyframes rise{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
+  .loc-head{
+    display:flex;align-items:center;gap:14px;margin-bottom:6px;
+    padding-bottom:9px;border-bottom:2px solid var(--line);
+  }
+  .loc-tag{
+    font-family:'Oswald',sans-serif;font-weight:700;font-size:1.18rem;
+    letter-spacing:.14em;padding:3px 13px;border-radius:6px;
+  }
+  .loc-tag.maa{background:rgba(45,91,184,.14);color:var(--brand);border:1px solid var(--brand-dim);}
+  .loc-tag.north{background:rgba(45,212,191,.13);color:#2dd4bf;border:1px solid #1c7d70;}
+  .loc-tag.kipic{background:rgba(255,158,84,.13);color:#ff9e54;border:1px solid #b3672a;}
+  .loc-name{font-size:.8rem;color:var(--muted);letter-spacing:.04em;}
+  .loc-count{
+    margin-left:auto;font-family:'Oswald',sans-serif;font-size:.95rem;
+    color:var(--faint);letter-spacing:.1em;
+  }
+
+  /* ---------- category group ---------- */
+  .cat{margin-top:18px;}
+  .cat-head{
+    display:flex;align-items:center;gap:10px;margin-bottom:7px;
+  }
+  .cat-bar{width:3px;height:15px;border-radius:2px;background:var(--cc);}
+  .cat-title{
+    font-family:'Oswald',sans-serif;font-size:.86rem;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--text);
+  }
+  .cat-n{
+    font-family:'IBM Plex Mono',monospace;font-size:.68rem;color:var(--faint);
+  }
+  .cat-line{flex:1;height:1px;background:var(--line-soft);}
+
+  /* ---------- vessel row ---------- */
+  .row{
+    display:grid;
+    grid-template-columns:158px 1fr 110px 96px 56px 112px;
+    gap:14px;align-items:center;
+    background:var(--panel);border:1px solid var(--line-soft);
+    border-radius:9px;padding:11px 14px;margin-bottom:6px;
+    transition:border-color .15s,transform .15s;
+  }
+  .row:hover{border-color:var(--line);transform:translateX(2px);}
+  .row[data-status="Off Commission"]{
+    border-color:rgba(248,81,73,.45);
+    background:linear-gradient(180deg,rgba(248,81,73,.06),var(--panel));
+  }
+  .row .vname{
+    font-family:'Oswald',sans-serif;font-weight:600;font-size:1rem;
+    letter-spacing:.03em;line-height:1.15;
+  }
+
+  /* ---------- off-commission reason bar ---------- */
+  .reason-bar{
+    grid-column:1 / -1;display:none;align-items:center;gap:11px;
+    margin-top:9px;padding-top:10px;border-top:1px dashed rgba(248,81,73,.35);
+  }
+  .row[data-status="Off Commission"] .reason-bar{display:flex;}
+  .reason-tag{
+    font-family:'Oswald',sans-serif;font-size:.66rem;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--oos);white-space:nowrap;flex:none;
+    display:flex;align-items:center;gap:6px;
+  }
+  .reason-tag::before{
+    content:"";width:8px;height:8px;border-radius:2px;background:var(--oos);
+  }
+  .reason-inp{
+    flex:1;background:var(--ink);border:1px solid rgba(248,81,73,.35);
+    color:var(--text);border-radius:7px;padding:8px 11px;
+    font-family:'IBM Plex Sans',sans-serif;font-size:.82rem;
+  }
+  .reason-inp:focus{outline:none;border-color:var(--oos);
+    box-shadow:0 0 0 2px rgba(248,81,73,.18);}
+  .reason-inp::placeholder{color:var(--faint);}
+  .row .vclass{
+    font-size:.66rem;color:var(--muted);letter-spacing:.05em;margin-top:1px;
+  }
+  .cell-lbl{
+    display:none;font-size:.58rem;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--faint);margin-bottom:2px;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;font-size:.78rem;}
+  .mono.dim{color:var(--muted);}
+  .mono.na{color:var(--faint);opacity:.6;}
+
+  /* status select styled as pill */
+  .stwrap{position:relative;}
+  .stsel{
+    -webkit-appearance:none;appearance:none;cursor:pointer;width:100%;
+    font-family:'Oswald',sans-serif;font-size:.74rem;letter-spacing:.07em;
+    text-transform:uppercase;font-weight:600;
+    border-radius:20px;padding:6px 26px 6px 24px;
+    border:1px solid var(--sc);color:var(--sc);
+    background:color-mix(in srgb,var(--sc) 12%,var(--panel));
+  }
+  .stsel:focus{outline:none;box-shadow:0 0 0 2px color-mix(in srgb,var(--sc) 35%,transparent);}
+  .stwrap::before{
+    content:"";position:absolute;left:10px;top:50%;transform:translateY(-50%);
+    width:8px;height:8px;border-radius:50%;background:var(--sc);pointer-events:none;
+  }
+  .stwrap::after{
+    content:"";position:absolute;right:10px;top:50%;
+    transform:translateY(-65%) rotate(45deg);
+    width:5px;height:5px;border-right:1.5px solid var(--sc);
+    border-bottom:1.5px solid var(--sc);pointer-events:none;
+  }
+  .stsel option{background:var(--panel-2);color:var(--text);}
+
+  .empty{
+    text-align:center;color:var(--faint);padding:50px 20px;
+    font-family:'IBM Plex Mono',monospace;font-size:.85rem;
+  }
+
+  footer{
+    margin-top:34px;padding-top:16px;border-top:1px solid var(--line-soft);
+    font-size:.7rem;color:var(--faint);line-height:1.7;letter-spacing:.02em;
+  }
+  footer b{color:var(--muted);font-weight:600;}
+
+  /* ---------- responsive ---------- */
+  @media(max-width:780px){
+    h1{font-size:1.3rem;}
+    .row{
+      grid-template-columns:1fr 1fr;gap:8px 14px;
+    }
+    .row .vcell-name{grid-column:1 / -1;}
+    .row .vcell-status{grid-column:1 / -1;}
+    .cell-lbl{display:block;}
+    .stsel{width:auto;}
+    .head-inner{align-items:flex-start;}
+    .reason-bar{flex-wrap:wrap;}
+    .reason-inp{min-width:100%;}
+  }
+  @media print{
+    body{background:#fff;color:#000;}
+    header{position:static;}
+    .toolbar,.filters,.btn-min,.live-dot,.tally .spacer{display:none;}
+    .row,.count,.tally{border-color:#bbb;background:#fff;}
+    .vname,h1{color:#000;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="head-inner">
+      <div class="brandblock">
+        <div class="anchor">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#2d5bb8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="5" r="2.4"/><line x1="12" y1="7.4" x2="12" y2="21"/>
+            <line x1="7" y1="11" x2="17" y2="11"/>
+            <path d="M4 14a8 8 0 0 0 16 0"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Vessel Status <span>Overview</span></h1>
+          <div class="sub"><span class="live-dot" id="liveDot"></span>KOC Marine Fleet · <span id="syncLabel">Connecting…</span></div>
+        </div>
+      </div>
+      <div class="head-right">
+        <div class="fleet-chart" id="fleetChart"></div>
+        <div class="counts">
+          <div class="count on" data-loc="ALL"><b id="cTotal">65</b><small>Vessels</small></div>
+          <div class="count maa" data-loc="MAA"><b id="cMaa">46</b><small>MAA</small></div>
+          <div class="count north" data-loc="North"><b id="cNorth">7</b><small>North</small></div>
+          <div class="count kipic" data-loc="KIPIC"><b id="cKipic">12</b><small>KIPIC</small></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/>
+        </svg>
+        <input id="search" type="text" placeholder="Search vessel name, KT no., IMO, contact…" autocomplete="off"/>
+      </div>
+    </div>
+    <div class="filters" id="catFilters"></div>
+    <div class="filters" id="statusFilters"></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="tally" id="tally"></div>
+  <div id="fleet"></div>
+  <div class="empty" id="empty" style="display:none;">No vessels match the current filters.</div>
+
+  <footer>
+    <div><b>Source:</b> Vessel Particulars &amp; Senior Mechanic Contact register — KOC marine fleet (61 vessels).</div>
+    <div><b>Vessel status</b> is set on this shared board and syncs live to everyone with the link. Use <b>Export</b> to save a local backup and <b>Import</b> to restore one.</div>
+    <div><b>Note:</b> Senior-mechanic name/contact is blank in the source register; IMO/official numbers are not on record for immigration barges, FAWARIS-2 and the yachts.</div>
+  </footer>
+</div>
+
+<script>
+/* ============ SUPABASE ============ */
+const SUPABASE_URL = 'https://kpvelteqsdbmxadxjazy.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtwdmVsdGVxc2RibXhhZHhqYXp5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NjEyODksImV4cCI6MjA5NTAzNzI4OX0.DbGdQKJfh9iTzDVJ6-PbAwvs6EoQSM4UwYsF271cDw4';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ============ FLEET DATA ============ */
+const VESSELS = [
+  // ---- MAA ----
+  {n:"TUG HAZEM",      loc:"MAA", cat:"70 TBP Tugs", cls:"70 TBP T.S Tug",            kt:"KT-1604",   imo:"9074872", yr:"1994", tel:"99012934"},
+  {n:"TUG BAYAN",      loc:"MAA", cat:"70 TBP Tugs", cls:"70 TBP T.S Tug",            kt:"KT-1605",   imo:"9074884", yr:"1994", tel:"99010992"},
+  {n:"TUG MUSAFER",    loc:"MAA", cat:"70 TBP Tugs", cls:"70 TBP T.S Tug",            kt:"KT-1606",   imo:"9074963", yr:"1994", tel:"99012938"},
+  {n:"TUG HUMAM",      loc:"MAA", cat:"70 TBP Tugs", cls:"70 TBP T.S Tug",            kt:"KT-1607",   imo:"9074975", yr:"1994", tel:"99012935"},
+  {n:"TUG SABAHI",     loc:"MAA", cat:"70 TBP Tugs", cls:"70 TBP T.S Tug",            kt:"",          imo:"",        yr:"",     tel:"99010993"},
+  {n:"KOC MUHAB",      loc:"MAA", cat:"80 TBP Tugs", cls:"80 TBP ASD Tug",            kt:"KT-1806",   imo:"9675975", yr:"2014", tel:"98005004"},
+  {n:"KOC SHAHEM",     loc:"MAA", cat:"80 TBP Tugs", cls:"80 TBP ASD Tug",            kt:"KT-1807",   imo:"9675987", yr:"2014", tel:"98765067"},
+  {n:"KOC SAHEB",      loc:"MAA", cat:"80 TBP Tugs", cls:"80 TBP ASD Tug",            kt:"KT-1808",   imo:"9675999", yr:"2014", tel:"98765069"},
+  {n:"KOC SHAHEEN",    loc:"MAA", cat:"80 TBP Tugs", cls:"80 TBP ASD Tug",            kt:"KT-1809",   imo:"9676008", yr:"2014", tel:"99780326"},
+  {n:"KOC MUAAWEN",    loc:"MAA", cat:"80 TBP Tugs", cls:"80 TBP ASD Tug",            kt:"KT-1811",   imo:"9676022", yr:"2014", tel:"99785029"},
+  {n:"KOC QAEED",      loc:"MAA", cat:"80 TBP Tugs", cls:"80 TBP ASD Tug",            kt:"KT-1813",   imo:"9676046", yr:"2014", tel:"94408495"},
+  {n:"KOC SABER",      loc:"MAA", cat:"50 TBP Tugs", cls:"50 TBP ASD Tug",            kt:"KT-1819",   imo:"9675884", yr:"2014", tel:"99993782"},
+  {n:"KOC AABER",      loc:"MAA", cat:"50 TBP Tugs", cls:"50 TBP ASD Tug",            kt:"KT-1820",   imo:"9675896", yr:"2014", tel:"98765065"},
+  {n:"KOC QAATER",     loc:"MAA", cat:"50 TBP Tugs", cls:"50 TBP ASD Tug",            kt:"KT-1821",   imo:"9675872", yr:"2014", tel:"98765071"},
+  {n:"FATEEN",         loc:"MAA", cat:"Workboats", cls:"T.S Crane Workboat · 15T SWL", kt:"KT-1608", imo:"9075759", yr:"1994", tel:"99012933"},
+  {n:"KOC AL-KOUT",    loc:"MAA", cat:"Workboats", cls:"ASD Crane Workboat · 20T SWL", kt:"KT-1802", imo:"9688532", yr:"2014", tel:"51515552"},
+  {n:"KOC AL-SOUR",    loc:"MAA", cat:"Workboats", cls:"ASD Crane Workboat · 20T SWL", kt:"KT-1803", imo:"9688544", yr:"2015", tel:"51513777"},
+  {n:"KOC AL-JOUN",    loc:"MAA", cat:"Workboats", cls:"ASD Crane Workboat · 20T SWL", kt:"KT-1804", imo:"9688556", yr:"2015", tel:"51515557"},
+  {n:"HAQEL DHAREEF",  loc:"MAA", cat:"Mooring Boats", cls:"Mooring Boat · Old",       kt:"KT-597/N",  imo:"9059315", yr:"1993", tel:""},
+  {n:"HAQEL DURRA",    loc:"MAA", cat:"Mooring Boats", cls:"Mooring Boat · Old",       kt:"KT-599/N",  imo:"9059303", yr:"1993", tel:""},
+  {n:"HAQEL MURJAN",   loc:"MAA", cat:"Mooring Boats", cls:"Mooring Boat · Old",       kt:"KT-600/N",  imo:"9067348", yr:"1993", tel:""},
+  {n:"KOC MUSANED-1",  loc:"MAA", cat:"Mooring Boats", cls:"Mooring Boat · New",       kt:"KT-922/AE", imo:"9682485", yr:"2014", tel:"51512555"},
+  {n:"KOC MUSANED-2",  loc:"MAA", cat:"Mooring Boats", cls:"Mooring Boat · New",       kt:"KT-923/AE", imo:"9682497", yr:"2014", tel:"51512227"},
+  {n:"KOC MUSANED-4",  loc:"MAA", cat:"Mooring Boats", cls:"Mooring Boat · New",       kt:"KT-925/AE", imo:"9682514", yr:"2014", tel:"51512226"},
+  {n:"KOC MUSANED-5",  loc:"North", cat:"Mooring Boats", cls:"Mooring Boat · New",     kt:"KT-926/AE", imo:"9682526", yr:"2014", tel:"51512228"},
+  {n:"KOC MUSANED-6",  loc:"North", cat:"Mooring Boats", cls:"Mooring Boat · New",     kt:"KT-927/AE", imo:"9682538", yr:"2014", tel:"97770819"},
+  {n:"MARRAT-II",      loc:"MAA", cat:"Crew / Ferry Boats", cls:"Ferry / Crew Boat · Old", kt:"KT-441/N",  imo:"8821711", yr:"1989", tel:""},
+  {n:"HAQEL AHMADI",   loc:"MAA", cat:"Crew / Ferry Boats", cls:"Ferry / Crew Boat · Old", kt:"KT-593/N",  imo:"9080699", yr:"1993", tel:""},
+  {n:"HAQEL BURGAN",   loc:"MAA", cat:"Crew / Ferry Boats", cls:"Ferry / Crew Boat · Old", kt:"KT-1596/N", imo:"9080716", yr:"1993", tel:""},
+  {n:"KOC WAFRA",      loc:"MAA", cat:"Crew / Ferry Boats", cls:"Ferry / Crew Boat · New", kt:"KT-955/AT", imo:"9839648", yr:"2019", tel:""},
+  {n:"KOC RATGA",      loc:"North", cat:"Crew / Ferry Boats", cls:"Ferry / Crew Boat · New", kt:"KT-956/AT", imo:"9839650", yr:"2019", tel:""},
+  {n:"KOC RAWDATAIN",  loc:"MAA", cat:"Pilot Boats", cls:"Pilot Boat",                kt:"KT-408/GZ", imo:"9833503", yr:"2017", tel:""},
+  {n:"KOC SABRIYA",    loc:"MAA", cat:"Pilot Boats", cls:"Pilot Boat",                kt:"KT-409/GZ", imo:"9833498", yr:"2017", tel:""},
+  {n:"KOC BOUBYAN",    loc:"North", cat:"Pilot Boats", cls:"Pilot Boat",              kt:"KT-957/AT", imo:"9839662", yr:"2019", tel:""},
+  {n:"KOC FAILAKA",    loc:"North", cat:"Pilot Boats", cls:"Pilot Boat",              kt:"KT/958/AT", imo:"9839674", yr:"2019", tel:""},
+  {n:"KOC WARBA",      loc:"MAA", cat:"Pilot Boats", cls:"Pilot Boat",                kt:"KT/959/AT", imo:"9839686", yr:"2019", tel:""},
+  {n:"KOC KUBBAR",     loc:"MAA", cat:"Pilot Boats", cls:"Pilot Boat",                kt:"KT/960/AT", imo:"9839698", yr:"2019", tel:""},
+  {n:"FAWARIS-2",      loc:"MAA", cat:"Barges", cls:"Barge",                          kt:"KT-1287",   imo:"",        yr:"1973", tel:""},
+  {n:"HOUT",           loc:"MAA", cat:"Barges", cls:"Barge",                          kt:"KT-1609",   imo:"9081887", yr:"1993", tel:""},
+  {n:"KOC-1",          loc:"MAA", cat:"Immigration Barges", cls:"Immigration Barge",  kt:"",          imo:"",        yr:"",     tel:""},
+  {n:"KOC-2",          loc:"MAA", cat:"Immigration Barges", cls:"Immigration Barge",  kt:"",          imo:"",        yr:"",     tel:""},
+  {n:"KOC-3",          loc:"MAA", cat:"Immigration Barges", cls:"Immigration Barge",  kt:"",          imo:"",        yr:"",     tel:""},
+  {n:"KOC AL ZOUR",    loc:"MAA", cat:"OSRV", cls:"Oil Spill Recovery Vessel",        kt:"KT-1865",   imo:"9881823", yr:"2020", tel:""},
+  {n:"CALM BUOY-20",   loc:"MAA", cat:"SBM", cls:"CALM Buoy · Single Buoy Mooring",   kt:"",          imo:"",        yr:"",     tel:""},
+  {n:"CALM BUOY-21",   loc:"MAA", cat:"SBM", cls:"CALM Buoy · Single Buoy Mooring",   kt:"",          imo:"",        yr:"",     tel:""},
+  {n:"CALM BUOY-23",   loc:"MAA", cat:"SBM", cls:"CALM Buoy · Single Buoy Mooring",   kt:"",          imo:"",        yr:"",     tel:""},
+  {n:"CALM BUOY-24",   loc:"MAA", cat:"SBM", cls:"CALM Buoy · Single Buoy Mooring",   kt:"",          imo:"",        yr:"",     tel:""},
+  {n:"RAHIYAH-1",      loc:"MAA", cat:"Yachts", cls:"Yacht",                          kt:"KT-132/BJ", imo:"",        yr:"2007", tel:""},
+  {n:"RAHIYAH-2",      loc:"MAA", cat:"Yachts", cls:"Yacht",                          kt:"KT-131/BJ", imo:"",        yr:"2007", tel:""},
+  {n:"SUDAIR-1",       loc:"MAA", cat:"Yachts", cls:"Yacht",                          kt:"KT-659/BD", imo:"",        yr:"2007", tel:""},
+  {n:"SUDAIR-2",       loc:"MAA", cat:"Yachts", cls:"Yacht",                          kt:"KT-960/BJ", imo:"",        yr:"2008", tel:""},
+  // ---- KIPIC ----
+  {n:"KOC SHAMEKH",    loc:"KIPIC", cat:"80 TBP Tugs", cls:"80 TBP ASD Tug",          kt:"KT-1810",   imo:"9676010", yr:"2014", tel:"94408192"},
+  {n:"KOC FARES",      loc:"KIPIC", cat:"80 TBP Tugs", cls:"80 TBP ASD Tug",          kt:"KT-1812",   imo:"9676034", yr:"2014", tel:"94095416"},
+  {n:"KOC JAWAD",      loc:"KIPIC", cat:"80 TBP Tugs", cls:"80 TBP ASD Tug",          kt:"KT-1814",   imo:"9676058", yr:"2014", tel:"98766657"},
+  {n:"KOC DHAFER",     loc:"KIPIC", cat:"50 TBP Tugs", cls:"50 TBP ASD Tug",          kt:"KT-1822",   imo:"9675901", yr:"2014", tel:"99991452"},
+  {n:"KOC KASER",      loc:"KIPIC", cat:"50 TBP Tugs", cls:"50 TBP ASD Tug",          kt:"KT-1823",   imo:"9675913", yr:"2014", tel:"98766659"},
+  {n:"KOC AL-KHOUR",   loc:"KIPIC", cat:"Workboats", cls:"ASD Crane Workboat · 20T SWL", kt:"KT-1805", imo:"9688568", yr:"2015", tel:"51515556"},
+  {n:"HAQEL LULU",     loc:"KIPIC", cat:"Mooring Boats", cls:"Mooring Boat · Old",    kt:"KT-598/N",  imo:"9059327", yr:"1993", tel:""},
+  {n:"KOC MUSANED-3",  loc:"North", cat:"Mooring Boats", cls:"Mooring Boat · New",    kt:"KT-924/AE", imo:"9682502", yr:"2014", tel:"51515553"},
+  {n:"HAQEL MANAGHISH",loc:"KIPIC", cat:"Crew / Ferry Boats", cls:"Ferry / Crew Boat · Old", kt:"KT-594/N", imo:"9080704", yr:"1993", tel:""},
+  {n:"KOC BAHRA",      loc:"North", cat:"Crew / Ferry Boats", cls:"Ferry / Crew Boat · New", kt:"KT-953/AT", imo:"9839624", yr:"2018", tel:""},
+  {n:"KOC MUTREBA",    loc:"KIPIC", cat:"Crew / Ferry Boats", cls:"Ferry / Crew Boat · New", kt:"KT-954/AT", imo:"9839636", yr:"2019", tel:""},
+  {n:"KOC GAROUH",     loc:"KIPIC", cat:"Crew / Ferry Boats", cls:"Ferry / Crew Boat · New", kt:"KT/961/AT", imo:"9839703", yr:"2019", tel:""},
+  {n:"KOC MESKAN",     loc:"KIPIC", cat:"Crew / Ferry Boats", cls:"Ferry / Crew Boat · New", kt:"KT/962/AT", imo:"9839715", yr:"2019", tel:""},
+  {n:"NAJMA",          loc:"KIPIC", cat:"Barges", cls:"Barge",                         kt:"KT-1610",   imo:"9081899", yr:"1993", tel:""},
+];
+
+const CAT_ORDER = ["80 TBP Tugs","70 TBP Tugs","50 TBP Tugs","Workboats","Mooring Boats","Crew / Ferry Boats","Pilot Boats","Barges","Immigration Barges","SBM","OSRV","Yachts"];
+const CAT_COLOR = {
+  "80 TBP Tugs":"#ff6b35","70 TBP Tugs":"#ff9a3c","50 TBP Tugs":"#ffc078",
+  "Workboats":"#eab308","Mooring Boats":"#3fb950",
+  "Crew / Ferry Boats":"#58a6ff","Pilot Boats":"#a78bfa","Barges":"#f472b6",
+  "Immigration Barges":"#22d3d3","SBM":"#e879f9","OSRV":"#fb923c","Yachts":"#94a3b8"
+};
+const STATUSES = {
+  "In Commission":  "#3fb950",
+  "In Drydock":     "#eab308",
+  "Off Commission": "#f85149"
+};
+const STATUS_RENAME = {
+  "Operational":"In Commission",
+  "Out of Service":"Off Commission",
+  "Standby":"In Commission"
+};
+
+/* ============ STATE ============ */
+let fleetState = {};
+const state = { search:"", loc:"ALL", cat:"ALL", status:"ALL" };
+
+/* ============ SYNC INDICATOR ============ */
+function setSyncState(s){
+  const dot = document.getElementById('liveDot');
+  const lbl = document.getElementById('syncLabel');
+  if(s === 'live'){
+    dot.style.background = '';
+    if(lbl) lbl.textContent = 'Live Sync';
+  } else if(s === 'saving'){
+    dot.style.background = 'var(--dd)';
+    if(lbl) lbl.textContent = 'Saving…';
+  } else if(s === 'error'){
+    dot.style.background = 'var(--oos)';
+    if(lbl) lbl.textContent = 'Connection error';
+  } else {
+    dot.style.background = 'var(--faint)';
+    if(lbl) lbl.textContent = 'Connecting…';
+  }
+}
+
+/* ============ PERSISTENCE ============ */
+function normalizeRow(s, r){
+  if(STATUS_RENAME[s]) s = STATUS_RENAME[s];
+  if(!STATUSES[s]) s = 'In Commission';
+  return { s, r: r || '' };
+}
+
+async function loadStatus(){
+  try{
+    const { data, error } = await db.from('vessel_status').select('vessel_name,status,reason');
+    if(error) throw error;
+    fleetState = {};
+    (data || []).forEach(row=>{
+      fleetState[row.vessel_name] = normalizeRow(row.status, row.reason);
+    });
+  } catch(e){
+    setSyncState('error');
+    fleetState = {};
+  }
+}
+
+async function saveVessel(name){
+  setSyncState('saving');
+  const e = fleetState[name] || { s:'In Commission', r:'' };
+  try{
+    const { error } = await db.from('vessel_status').upsert(
+      { vessel_name:name, status:e.s, reason:e.r, updated_at:new Date().toISOString() },
+      { onConflict:'vessel_name' }
+    );
+    if(error) throw error;
+    setSyncState('live');
+  } catch(err){
+    console.error('Save failed', err);
+    setSyncState('error');
+  }
+}
+
+async function saveStatus(){
+  setSyncState('saving');
+  const rows = Object.entries(fleetState).map(([vessel_name, e])=>({
+    vessel_name, status:e.s, reason:e.r, updated_at:new Date().toISOString()
+  }));
+  if(!rows.length){ setSyncState('live'); return; }
+  try{
+    const { error } = await db.from('vessel_status').upsert(rows, { onConflict:'vessel_name' });
+    if(error) throw error;
+    setSyncState('live');
+  } catch(err){
+    console.error('Bulk save failed', err);
+    setSyncState('error');
+  }
+}
+
+let _saveTimers = {};
+function saveDebounced(name){
+  clearTimeout(_saveTimers[name]);
+  _saveTimers[name] = setTimeout(()=> saveVessel(name), 450);
+}
+
+function getStatus(name){ return (fleetState[name] && fleetState[name].s) || "In Commission"; }
+function getReason(name){ return (fleetState[name] && fleetState[name].r) || ""; }
+function setVessel(name, s, r){
+  const cur = fleetState[name] || {s:"In Commission", r:""};
+  fleetState[name] = { s: s!==undefined?s:cur.s, r: r!==undefined?r:cur.r };
+}
+
+function exportStatus(){
+  const data = JSON.stringify(fleetState, null, 2);
+  const blob = new Blob([data], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "vessel_status_"+new Date().toISOString().slice(0,10)+".json";
+  document.body.appendChild(a); a.click();
+  a.remove(); URL.revokeObjectURL(a.href);
+}
+
+function importStatus(){
+  const inp = document.createElement("input");
+  inp.type = "file"; inp.accept = ".json,application/json";
+  inp.onchange = ()=>{
+    const f = inp.files && inp.files[0];
+    if(!f) return;
+    const rd = new FileReader();
+    rd.onload = async ()=>{
+      try{
+        const raw = JSON.parse(rd.result);
+        const out={};
+        Object.keys(raw||{}).forEach(k=>{
+          const e = (typeof raw[k]==="string")
+            ? {s:raw[k], r:""} : {s:raw[k].s||"In Commission", r:raw[k].r||""};
+          out[k] = normalizeRow(e.s, e.r);
+        });
+        fleetState = out;
+        await saveStatus();
+        render();
+        alert("Vessel statuses imported successfully.");
+      }catch(e){
+        alert("Could not read that file. Use a status file exported from this board.");
+      }
+    };
+    rd.readAsText(f);
+  };
+  inp.click();
+}
+
+/* ============ REAL-TIME ============ */
+function applyRemoteUpdate(vesselName, status, reason){
+  const safe = vesselName.replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+  const row = document.querySelector(`.row[data-name="${safe}"]`);
+  if(row){
+    row.dataset.status = status;
+    const sel = row.querySelector('.stsel');
+    if(sel){
+      sel.value = status;
+      sel.parentElement.style.setProperty('--sc', STATUSES[status]);
+    }
+    const inp = row.querySelector('.reason-inp');
+    if(inp && document.activeElement !== inp) inp.value = reason;
+  }
+  renderTally();
+}
+
+function subscribeRealtime(){
+  db.channel('vessel-updates')
+    .on('postgres_changes', { event:'*', schema:'public', table:'vessel_status' }, payload=>{
+      if(payload.eventType === 'DELETE'){
+        if(payload.old && payload.old.vessel_name){
+          delete fleetState[payload.old.vessel_name];
+          applyRemoteUpdate(payload.old.vessel_name, 'In Commission', '');
+        }
+        return;
+      }
+      const row = payload.new;
+      if(!row || !row.vessel_name) return;
+      const normalized = normalizeRow(row.status, row.reason);
+      fleetState[row.vessel_name] = normalized;
+      applyRemoteUpdate(row.vessel_name, normalized.s, normalized.r);
+    })
+    .subscribe(status=>{
+      if(status === 'SUBSCRIBED') setSyncState('live');
+      else if(status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setSyncState('error');
+    });
+}
+
+/* ============ HELPERS ============ */
+const $ = s => document.querySelector(s);
+const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g,"-");
+
+function matches(v){
+  if(state.loc !== "ALL" && v.loc !== state.loc) return false;
+  if(state.cat !== "ALL" && v.cat !== state.cat) return false;
+  if(state.status !== "ALL" && getStatus(v.n) !== state.status) return false;
+  const q = state.search.trim().toLowerCase();
+  if(q){
+    const hay = (v.n+" "+v.cls+" "+v.kt+" "+v.imo+" "+v.tel).toLowerCase();
+    if(!hay.includes(q)) return false;
+  }
+  return true;
+}
+
+/* ============ BUILD FILTERS ============ */
+function buildFilters(){
+  const cf = $("#catFilters");
+  const catCounts = {};
+  VESSELS.forEach(v => catCounts[v.cat] = (catCounts[v.cat]||0)+1);
+  let html = `<div class="chip on" data-cat="ALL">All Types <span class="n">${VESSELS.length}</span></div>`;
+  CAT_ORDER.forEach(c=>{
+    if(!catCounts[c]) return;
+    html += `<div class="chip dot" data-cat="${c}" style="--c:${CAT_COLOR[c]}">${c} <span class="n">${catCounts[c]}</span></div>`;
+  });
+  cf.innerHTML = html;
+  cf.querySelectorAll(".chip").forEach(ch=>{
+    ch.onclick = ()=>{
+      state.cat = ch.dataset.cat;
+      cf.querySelectorAll(".chip").forEach(x=>x.classList.toggle("on", x===ch));
+      render();
+    };
+  });
+
+  const sf = $("#statusFilters");
+  let sh = `<div class="chip on" data-status="ALL">All Status</div>`;
+  Object.keys(STATUSES).forEach(s=>{
+    sh += `<div class="chip dot" data-status="${s}" style="--c:${STATUSES[s]}">${s}</div>`;
+  });
+  sf.innerHTML = sh;
+  sf.querySelectorAll(".chip").forEach(ch=>{
+    ch.onclick = ()=>{
+      state.status = ch.dataset.status;
+      sf.querySelectorAll(".chip").forEach(x=>x.classList.toggle("on", x===ch));
+      render();
+    };
+  });
+}
+
+/* ============ RENDER ============ */
+function vesselRow(v){
+  const st = getStatus(v.n);
+  const reason = getReason(v.n);
+  const cell = (lbl,val,cls) =>
+    `<div><div class="cell-lbl">${lbl}</div><div class="${cls}">${val||'—'}</div></div>`;
+  const opts = Object.keys(STATUSES).map(s=>
+    `<option value="${s}" ${s===st?'selected':''}>${s}</option>`).join("");
+  const esc = s => (s||"").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+  return `
+    <div class="row" data-name="${esc(v.n)}" data-status="${st}">
+      <div class="vcell-status">
+        <div class="cell-lbl">Status</div>
+        <div class="stwrap" style="--sc:${STATUSES[st]}">
+          <select class="stsel" data-vessel="${esc(v.n)}">${opts}</select>
+        </div>
+      </div>
+      <div class="vcell-name">
+        <div class="vname">${v.n}</div>
+        <div class="vclass">${v.cls}</div>
+      </div>
+      ${cell("KT No.", v.kt, "mono dim"+(v.kt?"":" na"))}
+      ${cell("IMO No.", v.imo, "mono dim"+(v.imo?"":" na"))}
+      ${cell("Built", v.yr, "mono dim"+(v.yr?"":" na"))}
+      ${cell("Vessel Tel.", v.tel, "mono"+(v.tel?"":" na"))}
+      <div class="reason-bar">
+        <span class="reason-tag">Off Commission — Reason</span>
+        <input class="reason-inp" type="text" data-vessel="${esc(v.n)}"
+               value="${esc(reason)}" placeholder="State why the vessel is off commission…"/>
+      </div>
+    </div>`;
+}
+
+function render(){
+  const list = VESSELS.filter(matches);
+  const fleet = $("#fleet");
+  const locs = state.loc==="ALL" ? ["MAA","North","KIPIC"] : [state.loc];
+  let html = "";
+
+  const LOC_NAME = {
+    "MAA":   "Marine Operations — Ahmadi (KOC)",
+    "North": "North Operations Area",
+    "KIPIC": "Al-Zour Refinery Operations (KIPIC)"
+  };
+
+  locs.forEach(loc=>{
+    const lv = list.filter(v=>v.loc===loc);
+    if(!lv.length) return;
+    const fullName = LOC_NAME[loc] || loc;
+    html += `<section class="loc">
+      <div class="loc-head">
+        <span class="loc-tag ${loc.toLowerCase()}">${loc}</span>
+        <span class="loc-name">${fullName}</span>
+        <span class="loc-count">${lv.length} VESSEL${lv.length>1?'S':''}</span>
+      </div>`;
+    CAT_ORDER.forEach(cat=>{
+      const cv = lv.filter(v=>v.cat===cat);
+      if(!cv.length) return;
+      html += `<div class="cat">
+        <div class="cat-head">
+          <span class="cat-bar" style="--cc:${CAT_COLOR[cat]}"></span>
+          <span class="cat-title">${cat}</span>
+          <span class="cat-n">${cv.length}</span>
+          <span class="cat-line"></span>
+        </div>
+        ${cv.map(vesselRow).join("")}
+      </div>`;
+    });
+    html += `</section>`;
+  });
+
+  fleet.innerHTML = html;
+  $("#empty").style.display = list.length ? "none" : "block";
+
+  fleet.querySelectorAll(".stsel").forEach(sel=>{
+    sel.onchange = ()=>{
+      const name = sel.dataset.vessel;
+      setVessel(name, sel.value, undefined);
+      const row = sel.closest(".row");
+      row.dataset.status = sel.value;
+      sel.parentElement.style.setProperty("--sc", STATUSES[sel.value]);
+      saveVessel(name);
+      renderTally();
+      if(sel.value==="Off Commission"){
+        const inp = row.querySelector(".reason-inp");
+        if(inp) inp.focus();
+      }
+      if(state.status!=="ALL") render();
+    };
+  });
+  fleet.querySelectorAll(".reason-inp").forEach(inp=>{
+    inp.oninput = ()=>{
+      setVessel(inp.dataset.vessel, undefined, inp.value);
+      saveDebounced(inp.dataset.vessel);
+    };
+    inp.onchange = ()=> saveVessel(inp.dataset.vessel);
+  });
+  renderTally(list.length);
+}
+
+function renderTally(shownCount){
+  const counts = {};
+  Object.keys(STATUSES).forEach(s=> counts[s]=0);
+  VESSELS.forEach(v=> counts[getStatus(v.n)]++);
+  let html = `<span class="lbl">Fleet Status</span>`;
+  Object.keys(STATUSES).forEach(s=>{
+    html += `<div class="tstat">
+      <span class="sw" style="background:${STATUSES[s]}"></span>
+      ${s} <b>${counts[s]}</b></div>`;
+  });
+  const shown = (shownCount===undefined)
+      ? VESSELS.filter(matches).length : shownCount;
+  const filtered = state.search.trim()!=="" || state.loc!=="ALL"
+                 || state.cat!=="ALL" || state.status!=="ALL";
+  html += `<span class="spacer"></span>
+    <span class="shown ${filtered?'filtered':''}">Showing ${shown} / ${VESSELS.length}</span>`;
+  if(filtered){
+    html += `<button class="btn-min clearf" id="clearBtn">✕ Clear Filters</button>`;
+  }
+  html += `<button class="btn-min" id="exportBtn">⭳ Export</button>
+    <button class="btn-min" id="importBtn">⭱ Import</button>
+    <button class="btn-min" id="resetBtn">Reset Status</button>
+    <button class="btn-min" id="printBtn">Print</button>`;
+  $("#tally").innerHTML = html;
+  const cb = $("#clearBtn");
+  if(cb) cb.onclick = clearFilters;
+  $("#exportBtn").onclick = exportStatus;
+  $("#importBtn").onclick = importStatus;
+  $("#resetBtn").onclick = async ()=>{
+    if(confirm("Reset every vessel to In Commission and clear all off-commission reasons? This affects everyone with the link.")){
+      fleetState = {};
+      const rows = VESSELS.map(v=>({
+        vessel_name: v.n, status:'In Commission', reason:'',
+        updated_at: new Date().toISOString()
+      }));
+      await db.from('vessel_status').upsert(rows, { onConflict:'vessel_name' });
+      render();
+    }
+  };
+  $("#printBtn").onclick = ()=> window.print();
+  renderChart();
+}
+
+/* ============ READINESS DONUT ============ */
+function renderChart(){
+  const counts = {};
+  Object.keys(STATUSES).forEach(s=> counts[s]=0);
+  VESSELS.forEach(v=> counts[getStatus(v.n)]++);
+  const total = VESSELS.length;
+  const CX=60, CY=60, R=42, C=2*Math.PI*R;
+
+  let off=0, segs="";
+  Object.keys(STATUSES).forEach(s=>{
+    const len = (counts[s]/total)*C;
+    if(len>0){
+      segs += `<circle class="seg" cx="${CX}" cy="${CY}" r="${R}" fill="none"
+        stroke="${STATUSES[s]}" stroke-width="15"
+        stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}"
+        stroke-dashoffset="${(-off).toFixed(2)}"
+        transform="rotate(-90 ${CX} ${CY})"></circle>`;
+    }
+    off += len;
+  });
+
+  const pct = s => Math.round((counts[s]/total)*100);
+  const legend = Object.keys(STATUSES).map(s=>
+    `<div class="lg-row">
+       <span class="lg-dot" style="background:${STATUSES[s]}"></span>
+       <span class="lg-name">${s}</span>
+       <span class="lg-val">${counts[s]} · ${pct(s)}%</span>
+     </div>`).join("");
+
+  $("#fleetChart").innerHTML = `
+    <svg viewBox="0 0 120 120" class="donut">
+      <circle cx="${CX}" cy="${CY}" r="${R}" fill="none"
+              stroke="var(--line-soft)" stroke-width="15"></circle>
+      ${segs}
+      <text x="${CX}" y="${CY-6}" class="donut-num">${pct("In Commission")}%</text>
+      <text x="${CX}" y="${CY+12}" class="donut-lbl">IN COMMISSION</text>
+    </svg>
+    <div class="chart-legend">
+      <div class="cl-title">Fleet Readiness · ${total} Vessels</div>
+      ${legend}
+    </div>`;
+}
+
+function clearFilters(){
+  state.search=""; state.loc="ALL"; state.cat="ALL"; state.status="ALL";
+  $("#search").value="";
+  document.querySelectorAll(".count").forEach(c=>
+    c.classList.toggle("on", c.dataset.loc==="ALL"));
+  $("#catFilters").querySelectorAll(".chip").forEach(x=>
+    x.classList.toggle("on", x.dataset.cat==="ALL"));
+  $("#statusFilters").querySelectorAll(".chip").forEach(x=>
+    x.classList.toggle("on", x.dataset.status==="ALL"));
+  render();
+}
+
+/* ============ EVENTS ============ */
+$("#search").addEventListener("input", e=>{ state.search=e.target.value; render(); });
+
+function setLocation(loc){
+  state.loc = loc;
+  document.querySelectorAll(".count").forEach(c=>
+    c.classList.toggle("on", c.dataset.loc===loc));
+  render();
+}
+document.querySelectorAll(".count").forEach(c=>{
+  c.setAttribute("tabindex","0");
+  c.setAttribute("title", c.dataset.loc==="ALL"
+    ? "Show all locations" : "Filter to "+c.dataset.loc);
+  c.onclick = ()=> setLocation(c.dataset.loc);
+  c.onkeydown = e=>{
+    if(e.key==="Enter"||e.key===" "){ e.preventDefault(); setLocation(c.dataset.loc); }
+  };
+});
+
+/* ============ INIT ============ */
+function headerCounts(){
+  const byLoc={};
+  VESSELS.forEach(v=> byLoc[v.loc]=(byLoc[v.loc]||0)+1);
+  $("#cTotal").textContent = VESSELS.length;
+  $("#cMaa").textContent   = byLoc.MAA   || 0;
+  $("#cNorth").textContent = byLoc.North || 0;
+  $("#cKipic").textContent = byLoc.KIPIC || 0;
+}
+(async ()=>{
+  await loadStatus();
+  headerCounts();
+  buildFilters();
+  render();
+  subscribeRealtime();
+})();
+</script>
+</body>
+</html>
