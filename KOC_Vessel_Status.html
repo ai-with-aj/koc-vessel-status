@@ -683,9 +683,9 @@ function subscribeRealtime(){
       }
       const row = payload.new;
       if(!row || !row.vessel_name) return;
-      const normalized = normalizeRow(row.status, row.reason);
+      const normalized = normalizeRow(row.status, row.reason, row.location);
       fleetState[row.vessel_name] = normalized;
-      applyRemoteUpdate(row.vessel_name, normalized.s, normalized.r);
+      applyRemoteUpdate(row.vessel_name, normalized.s, normalized.r, normalized.l);
     })
     .subscribe(status=>{
       if(status === 'SUBSCRIBED') setSyncState('live');
